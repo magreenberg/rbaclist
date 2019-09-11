@@ -152,10 +152,6 @@ class Binding(RBACObject):
     def get_roleref(self):
         return self.get('roleRef')
 
-    def get_roleref_kind(self):
-        role_ref = self.get_roleref()
-        return role_ref.get('kind')
-
     def get_roleref_name(self):
         role_ref = self.get_roleref()
         return role_ref.get('name')
@@ -276,11 +272,12 @@ class Users(RBACObjects):
 
 
 def get_role_by_kind_name(rbac_cache, kind, name):
-    for role in rbac_cache.get_cluster_role_objs().get_all() + rbac_cache.get_local_role_objs().get_all():
-        if role.get_kind() == kind and role.get_metadata_name() == name:
-            return role
-    # FIXME fallback (potential bug in 'oc get rolebindings'
-    for role in rbac_cache.get_cluster_role_objs().get_all() + rbac_cache.get_local_role_objs().get_all():
+    if kind == 'RoleBinding':
+        for role in rbac_cache.get_local_role_objs().get_all():
+            if role.get_metadata_name() == name:
+                return role
+    # fallback as ClusterRoleBinding" can override "RoleBinding"
+    for role in rbac_cache.get_cluster_role_objs().get_all():
         if role.get_metadata_name() == name:
             return role
     return None
@@ -294,9 +291,6 @@ def print_identity_header(name, actype, namespace):
 
 def print_roles_by_details(rbac_cache, identity_name, identity_type, identity_namespace, \
         group_names, print_roles, print_actions, output):
-    # FIXME - "namespace" is different between LocalRoles and ClusterRoles
-    #all_role_lines = []
-    #all_action_lines = []
     for binding in rbac_cache.get_cluster_role_binding_objs().get_all() + rbac_cache.get_role_binding_objs().get_all():
         subjects = binding.get_subjects()
         for subject in subjects:
@@ -307,13 +301,16 @@ def print_roles_by_details(rbac_cache, identity_name, identity_type, identity_na
             # check whether this binding relevant for this identity
             if (subject_kind == identity_type and subject_name == identity_name and subject_namespace == identity_namespace) \
                 or (subject_kind == 'Group' and subject_name in group_names):
-                # FIXME - some groups start with "system:" and "system:serviceaccounts:"
+                if identity_type != 'Group' and subject_kind == 'Group':
+                    group_name = " Group:" + subject_name
+                else:
+                    group_name = ""
 #                 if verbose:
 #                     binding.to_output('Subject kind=' + subject_kind + ' name=' + \
 #                        subject_name + ' namespace=' + subject_namespace)
 
                 # find role specified by binding's roleRef
-                role = get_role_by_kind_name(rbac_cache, binding.get_roleref_kind(), binding.get_roleref_name())
+                role = get_role_by_kind_name(rbac_cache, binding.get_kind(), binding.get_roleref_name())
                 if role:
                     # which is the relevant namespace?
                     if identity_namespace:
@@ -328,7 +325,7 @@ def print_roles_by_details(rbac_cache, identity_name, identity_type, identity_na
                         print overriding_namespace
                     if print_roles:
                         output.add_line(identity_type + ':' + identity_name + ' Namespace:' + overriding_namespace + \
-                            ' ' + role.get_kind() + ':' + role.get_metadata_name())
+                            ' ' + role.get_kind() + ':' + role.get_metadata_name() + group_name)
                     if print_actions:
                         rules = role.get_rules()
                         for rule in rules:
@@ -340,7 +337,7 @@ def print_roles_by_details(rbac_cache, identity_name, identity_type, identity_na
                             verbs.sort()
                             output.add_line(identity_type + ':' + identity_name + ' Namespace:' + overriding_namespace + \
                                 ' Resources:' + ','.join(resources) + \
-                                ' Verbs:' + ','.join(verbs))
+                                ' Verbs:' + ','.join(verbs) + group_name)
 
 def print_roles_for_identity(rbac_cache, identity, print_roles, print_actions, output):
     account_name = identity.get_metadata_name()
@@ -455,7 +452,7 @@ def main():
                         if serviceaccount.get_metadata_name() == arg:
                             print_roles_for_identity(rbac_cache, serviceaccount, args.print_roles, args.print_actions, output)
                     if output.get_num_lines() == cnt:
-                        print 'Unknown serviceaccount: ' + arg
+                        print 'No data found for serviceaccount: ' + arg
                         sys.exit(1)
                     cnt = output.get_num_lines()
             else:
