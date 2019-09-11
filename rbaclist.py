@@ -45,9 +45,8 @@ class RBACObjects(object):
         cmd = ['oc', 'get', kind, '--chunk-size=0', '--all-namespaces', '-o', 'json']
         try:
             proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        except:
-            print 'Failed to run the \"oc\" command. Ensure that the \"oc\" command is in the PATH.'
-            print " ".join(cmd)
+        except Exception as e:
+            print 'Failed to run the \"oc\" command. Ensure that it is in the PATH. ' + e.message
             sys.exit(1)
         out, err = proc.communicate()
         if err:
@@ -89,7 +88,7 @@ class RBACObjects(object):
             if obj.get_metadata_name() == name:
                 return obj
         return None
-    
+
 class Output(object):
 
     def __init__(self):
@@ -111,7 +110,7 @@ class Output(object):
     def get_num_lines(self):
         return len(self.out_lines)
 
-    
+
 # Bindings
 # ========
 class Binding(RBACObject):
@@ -430,10 +429,10 @@ def main():
         help='print roles')
 #    parser.add_argument('-v', dest='verbose', action='store_true')
     args = parser.parse_args()
-    
+
     if not args.arg_list and not args.print_actions and not args.print_roles:
         parser.exit(2, "One of the following options required: --list, --actions, --roles\n")
-    
+
 #     verbose = args.verbose
 
     #initialize()
