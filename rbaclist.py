@@ -60,23 +60,6 @@ class RBACObjects(object):
         for obj in alldata['items']:
             self.all.append(class_type(obj))
 
-  # DEBUG ONLY
-#   def loadDataFromFile(self):
-#       filename = 'data/' + self.kind.lower + '/json'
-#       try:
-#           with open(filename, 'r') as fp:
-#               alldata = json.load(fp)
-#       except:
-#           print "error loading JSON file: " + filename
-#
-#       fp.close()
-#       #print alldata
-#       #print type(alldata)
-#       if not isinstance(alldata, dict):
-#           print "Invalid JSON format. Expected \"dict\""
-#           sys.exit(1)
-#       return alldata
-
     def get_all_items(self):
         return self.get_all()
 
@@ -88,6 +71,52 @@ class RBACObjects(object):
             if obj.get_metadata_name() == name:
                 return obj
         return None
+
+class RBACCache(object):
+    def __init__(self):
+        '''
+        Constructor
+        '''
+        self.all_data = None
+        self.user_objs = []
+        self.group_objs = []
+        self.serviceaccount_objs = []
+        self.local_role_objs = []
+        self.cluster_role_objs = []
+        self.role_binding_objs = []
+        self.cluster_role_binding_objs = []
+
+    def load_cache(self):
+        self.user_objs = Users()
+        self.group_objs = Groups()
+        self.serviceaccount_objs = ServiceAccounts()
+
+        self.local_role_objs = LocalRoles()
+        self.cluster_role_objs = ClusterRoles()
+
+        self.role_binding_objs = RoleBindings()
+        self.cluster_role_binding_objs = ClusterRoleBindings()
+
+    def get_user_objs(self):
+        return self.user_objs
+
+    def get_group_objs(self):
+        return self.group_objs
+
+    def get_serviceaccount_objs(self):
+        return self.serviceaccount_objs
+
+    def get_local_role_objs(self):
+        return self.local_role_objs
+
+    def get_cluster_role_objs(self):
+        return self.cluster_role_objs
+
+    def get_role_binding_objs(self):
+        return self.role_binding_objs
+
+    def get_cluster_role_binding_objs(self):
+        return self.cluster_role_binding_objs
 
 class Output(object):
 
@@ -188,7 +217,6 @@ class LocalRoles(RBACObjects):
         self.objs = self.load_objs('Role', LocalRole)
 
 
-
 # Identities
 class Group(RBACObject):
     def __init__(self, obj):
@@ -245,52 +273,6 @@ class Users(RBACObjects):
         super(Users, self).__init__()
         self.load_objs('User', User)
 
-
-class RBACCache(object):
-    def __init__(self):
-        '''
-        Constructor
-        '''
-        self.all_data = None
-        self.user_objs = []
-        self.group_objs = []
-        self.serviceaccount_objs = []
-        self.local_role_objs = []
-        self.cluster_role_objs = []
-        self.role_binding_objs = []
-        self.cluster_role_binding_objs = []
-
-    def load_cache(self):
-        self.user_objs = Users()
-        self.group_objs = Groups()
-        self.serviceaccount_objs = ServiceAccounts()
-
-        self.local_role_objs = LocalRoles()
-        self.cluster_role_objs = ClusterRoles()
-
-        self.role_binding_objs = RoleBindings()
-        self.cluster_role_binding_objs = ClusterRoleBindings()
-
-    def get_user_objs(self):
-        return self.user_objs
-
-    def get_group_objs(self):
-        return self.group_objs
-
-    def get_serviceaccount_objs(self):
-        return self.serviceaccount_objs
-
-    def get_local_role_objs(self):
-        return self.local_role_objs
-
-    def get_cluster_role_objs(self):
-        return self.cluster_role_objs
-
-    def get_role_binding_objs(self):
-        return self.role_binding_objs
-
-    def get_cluster_role_binding_objs(self):
-        return self.cluster_role_binding_objs
 
 
 def get_role_by_kind_name(rbac_cache, kind, name):
@@ -356,9 +338,6 @@ def print_roles_by_details(rbac_cache, identity_name, identity_type, identity_na
                             resources.sort()
                             verbs = rule.get('verbs', [])
                             verbs.sort()
-                            #print 'apiGroups:' + ','.join(apiGroups)
-                            #print 'resources:' + ','.join(resources)
-                            #print 'actions:' + ','.join(actions)
                             output.add_line(identity_type + ':' + identity_name + ' Namespace:' + overriding_namespace + \
                                 ' Resources:' + ','.join(resources) + \
                                 ' Verbs:' + ','.join(verbs))
@@ -367,8 +346,6 @@ def print_roles_for_identity(rbac_cache, identity, print_roles, print_actions, o
     account_name = identity.get_metadata_name()
     account_type = identity.__class__.__name__
     account_namespace = identity.get_metadata_namespace()
-
-#     print_identity_header(account_name, account_type, account_namespace)
 
     # get all groups
     if account_type == 'Group':
@@ -435,7 +412,6 @@ def main():
 
 #     verbose = args.verbose
 
-    #initialize()
     rbac_cache = RBACCache()
     rbac_cache.load_cache()
 
